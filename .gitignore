@@ -1,0 +1,46 @@
+# Logs
+*.log
+
+# Terraform files
+.terraform/
+*.tfstate
+*.tfstate.backup
+crash.log
+override.tf
+override.tf.json
+*.tfvars
+*.tfvars.json
+main.tfplan
+.terraform.lock.hcl
+
+# Kubernetes config and secrets
+.kube/
+*.yaml
+*.yml
+*.crt
+*.key
+
+# SSH keys
+*.pem
+*.pub
+
+# System files
+.DS_Store
+Thumbs.db
+
+# Temporary files
+*.tmp
+*.swp
+*.bak
+*.old
+
+# Python virtual environments (if applicable)
+venv/
+__pycache__/
+
+# Node.js dependencies (if applicable)
+node_modules/
+
+# IDE specific files
+.vscode/
+.idea/
