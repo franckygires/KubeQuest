@@ -8,8 +8,8 @@ MASTER_IP=$1
 WORKER_IP=$2
 ADMIN_USERNAME=$3
 ADMIN_PASSWORD=$4
-LOG_MASTER="cleanup-master.log"
-LOG_WORKER="cleanup-worker.log"
+LOG_MASTER="./logs/cleanup-master.log"
+LOG_WORKER="./logs/cleanup-worker.log"
 
 # Fonctions de journalisation
 log() { echo "[$(date '+%Y-%m-%d %H:%M:%S')] $1" | tee -a "$LOG_MASTER"; }
@@ -42,7 +42,7 @@ CLEANUP_SCRIPT=$(cat << 'EOF'
 LOG_FILE="/tmp/cleanup.log"
 exec > >(tee -a "$LOG_FILE") 2>&1
 log() { echo "[$(date '+%Y-%m-%d %H:%M:%S')] $1"; }
-
+ 
 log "Démarrage nettoyage"
 
 # Réinitialiser Kubernetes
@@ -60,6 +60,16 @@ log "Désinstallation Docker"
 sudo systemctl stop docker containerd || true
 sudo apt-get purge -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin || log "Avertissement : Désinstallation Docker échoué"
 sudo rm -rf /var/lib/docker /etc/docker /etc/containerd /etc/apt/keyrings/docker.gpg /etc/apt/sources.list.d/docker.list
+
+# Desinstaller flannel
+log "Désinstallation Flannel"
+sudo rm -rf /etc/cni/net.d/10-flannel.conflist /opt/cni/bin/flannel || log "Avertissement : Désinstallation Flannel échoué"
+# Désinstaller kube-proxy
+log "Désinstallation kube-proxy"
+sudo rm -rf /var/lib/kube-proxy || log "Avertissement : Désinstallation kube-proxy échoué"
+# Désinstaller cri-dockerd
+log "Désinstallation cri-dockerd"
+sudo apt-get purge -y cri-dockerd || log "Avertissement : Désinstallation cri-dockerd échoué"
 
 # Nettoyer paquets résiduels
 log "Nettoyage paquets"
