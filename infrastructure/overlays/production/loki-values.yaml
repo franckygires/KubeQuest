@@ -1,0 +1,61 @@
+# infrastructure/overlays/production/loki-values.yaml
+# Fichier de valeurs final avec la configuration du schéma Loki
+
+deploymentMode: SingleBinary
+
+singleBinary:
+  replicas: 1
+  persistence:
+    enabled: true
+    size: 5Gi
+    storageClass: "local-path"
+  resources:
+    requests:
+      cpu: 50m
+      memory: 128Mi
+    limits:
+      cpu: 100m
+      memory: 256Mi
+
+backend:
+  replicas: 0
+read:
+  replicas: 0
+write:
+  replicas: 0
+
+promtail:
+  enabled: true
+  resources:
+    requests:
+      cpu: 25m
+      memory: 64Mi
+    limits:
+      cpu: 50m
+      memory: 128Mi
+
+# Configuration globale pour Loki
+loki:
+  storage:
+    type: "filesystem"
+
+  # --- SECTION AJOUTÉE ---
+  # On définit un schéma de configuration pour l'indexation des logs
+  schemaConfig:
+    configs:
+      - from: 2024-01-01 # La date doit être dans le passé
+        store: boltdb-shipper
+        object_store: filesystem
+        schema: v12 # v12 est une version stable et recommandée
+        index:
+          prefix: index_
+          period: 24h
+
+  limits_config:
+    allow_structured_metadata: false
+
+chunksCache:
+  enabled: false
+
+resultsCache:
+  enabled: false

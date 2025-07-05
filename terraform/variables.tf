@@ -1,29 +1,23 @@
+variable "resource_group_name" {
+  description = "Le nom du groupe de ressources pour le projet KubeQuest."
+  type        = string
+  default     = "rg-group-03"
+}
+
 variable "location" {
-  description = "Région Azure pour les ressources"
+  description = "La région Azure où déployer les ressources."
   type        = string
   default     = "spaincentral"
 }
 
-variable "vm_size" {
-  description = "Taille des machines virtuelles"
-  type        = string
-  default     = "standard_b2ls_v2"
-}
-
 variable "admin_username" {
-  description = "Nom d’utilisateur admin pour les VM"
+  description = "Le nom d'utilisateur pour l'accès SSH aux VMs."
   type        = string
-  default     = "azureadmin"
+  default     = "azureuser"
 }
 
-variable "admin_password" {
-  description = "Mot de passe admin pour les VM"
+variable "admin_public_key_path" {
+  description = "Le chemin vers votre clé publique SSH (ex: ~/.ssh/id_rsa.pub)."
   type        = string
-  sensitive   = true
-}
-
-variable "subscription_id" {
-  description = "ID de la souscription Azure"
-  type        = string
-  default     = "6b9318b1-2215-418a-b0fd-ba0832e9b333"
+  #   default     = "~/.ssh/id_ed25519.pub "
 }

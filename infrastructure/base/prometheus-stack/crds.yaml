@@ -1,0 +1,2 @@
+# infrastructure/base/prometheus-stack/crds.yaml
+# Fichier vide qui sera rempli par la passe de Helm pour les CRDs

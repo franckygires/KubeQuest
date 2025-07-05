@@ -1,0 +1,13 @@
+# application/kustomize-deployment/base/kustomization.yaml
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+# On déclare le chart Helm local comme ressource à déployer
+helmCharts:
+  - name: web-app
+    # On spécifie le chemin vers notre chart local
+    repo: file://../../../application/web-app
+    version: 0.1.0
+    releaseName: web-app
+    # On déploie dans le namespace "default" ou un autre de votre choix
+    namespace: default

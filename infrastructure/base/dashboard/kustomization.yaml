@@ -1,0 +1,7 @@
+# infrastructure/base/dashboard/kustomization.yaml
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  # On pointe maintenant vers le fichier local au lieu de l'URL distante
+  - recommended.yaml
+  - admin-user.yaml

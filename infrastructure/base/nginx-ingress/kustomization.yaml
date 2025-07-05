@@ -1,0 +1,6 @@
+# infrastructure/base/nginx-ingress/kustomization.yaml
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  # On pointe directement vers le manifeste officiel d'installation de NGINX Ingress
+  - https://raw.githubusercontent.com/kubernetes/ingress-nginx/controller-v1.10.1/deploy/static/provider/cloud/deploy.yaml

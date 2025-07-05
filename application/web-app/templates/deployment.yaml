@@ -1,0 +1,87 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: "{{ include "web-app.fullname" . }}"
+  labels:
+{{ include "web-app.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.replicaCount }}
+  selector:
+    matchLabels:
+{{ include "web-app.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+{{ include "web-app.selectorLabels" . | nindent 8 }}
+    spec:
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - weight: 100
+            podAffinityTerm:
+              labelSelector:
+                matchExpressions:
+                  - key: app.kubernetes.io/name
+                    operator: In
+                    values:
+                      - {{ .Chart.Name }}
+              topologyKey: "kubernetes.io/hostname"
+      initContainers:
+        - name: setup-app
+          image: "{{ .Values.app.image.repository }}:{{ .Values.app.image.tag }}"
+          imagePullPolicy: {{ .Values.app.image.pullPolicy | quote }}
+          command: ['sh', '-c']
+          args:
+            - |
+              echo "En attente de la base de données MySQL...";
+              while ! nc -z {{ include "web-app.fullname" . }}-mysql 3306; do sleep 1; done;
+              echo "MySQL est prêt.";
+              cd /var/www/html;
+              composer install;
+              php artisan migrate --force;
+              chown -R www-data:www-data storage bootstrap/cache;
+              chmod -R 775 storage bootstrap/cache;
+              echo "Préparation terminée.";
+          env:
+            - name: DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: "{{ include "web-app.fullname" . }}-mysql"
+                  key: mysql-password
+            - name: DB_HOST
+              value: "{{ include "web-app.fullname" . }}-mysql"
+            - name: DB_DATABASE
+              value: "{{ .Values.mysql.auth.database }}"
+            - name: DB_USERNAME
+              value: "{{ .Values.mysql.auth.username }}"
+      containers:
+        - name: "{{ .Chart.Name }}"
+          image: "{{ .Values.app.image.repository }}:{{ .Values.app.image.tag }}"
+          imagePullPolicy: {{ .Values.app.image.pullPolicy | quote }}
+          command: ["/bin/sh", "-c"]
+          args:
+            - "nginx -g 'daemon off;' & /usr/local/sbin/php-fpm -O"
+          ports:
+            - name: http
+              containerPort: 80
+              protocol: TCP
+          env:
+            - name: APP_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: "{{ .Values.app.secretName }}"
+                  key: APP_KEY
+            - name: DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: "{{ include "web-app.fullname" . }}-mysql"
+                  key: mysql-password
+            - name: DB_HOST
+              value: "{{ include "web-app.fullname" . }}-mysql"
+            - name: DB_DATABASE
+              value: "{{ .Values.mysql.auth.database }}"
+            - name: DB_USERNAME
+              value: "{{ .Values.mysql.auth.username }}"
+
+          resources:
+            {{- toYaml .Values.app.resources | nindent 12 }}

@@ -1,0 +1,41 @@
+# infrastructure/overlays/production/prometheus-values.yaml
+# Fichier de valeurs pour surcharger le chart kube-prometheus-stack (CORRIGÉ)
+
+# On configure tous les composants ici, en évitant les doublons.
+alertmanager:
+  enabled: false # On désactive Alertmanager
+
+grafana:
+  enabled: true # On garde Grafana
+  # On définit les ressources pour Grafana ici
+  resources:
+    requests:
+      cpu: 50m
+      memory: 128Mi
+    limits:
+      cpu: 100m
+      memory: 256Mi
+
+kube-state-metrics:
+  enabled: true # On garde kube-state-metrics
+  # On définit ses ressources ici
+  resources:
+    requests:
+      cpu: 50m
+      memory: 64Mi
+    limits:
+      cpu: 100m
+      memory: 128Mi
+
+prometheus-node-exporter:
+  enabled: true # On garde le node-exporter
+
+prometheus:
+  prometheusSpec:
+    resources:
+      requests:
+        cpu: 100m
+        memory: 256Mi
+      limits:
+        cpu: 250m
+        memory: 512Mi

@@ -1,0 +1,26 @@
+# infrastructure/overlays/production/kustomization.yaml
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+resources:
+  # - ../../base/loki-stack/namespace.yaml
+  # - ../../base/prometheus-stack/namespace.yaml
+  - ../../base/nginx-ingress
+  - ../../base/dashboard
+  # - ../../base/prometheus-stack
+  # - ../../base/loki-stack
+# helmCharts:
+#   - name: kube-prometheus-stack
+#     repo: https://prometheus-community.github.io/helm-charts
+#     version: "75.6.1"
+#     releaseName: prometheus
+#     namespace: monitoring
+#     valuesFile: prometheus-values.yaml
+#     # On ajoute cette ligne très importante
+#     includeCRDs: true
+#   - name: loki
+#     repo: https://grafana.github.io/helm-charts
+#     version: "6.6.2"
+#     releaseName: loki
+#     namespace: loki
+#     valuesFile: loki-values.yaml

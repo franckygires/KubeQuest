@@ -1,7 +1,7 @@
 # Logs
-*.log
+logs/
 
-# Terraform files
+# Fichiers Terraform
 .terraform/
 *.tfstate
 *.tfstate.backup
@@ -11,36 +11,44 @@ override.tf.json
 *.tfvars
 *.tfvars.json
 main.tfplan
-.terraform.lock.hcl
 
-# Kubernetes config and secrets
+# Fichiers générés par le projet KubeQuest
+# Ignorer le kubeconfig et les credentials du projet
+/kubequest.config
+/credentials-velero
+# Ignorer les charts Helm temporaires et les dépendances téléchargées
+/tmp_charts/
+/application/web-app/charts/
+/infrastructure/overlays/production/charts/
+# Ignorer les fichiers de sortie temporaires
+loki-default-values.txt
+
+# Configuration et secrets Kubernetes (uniquement les fichiers sensibles)
 .kube/
-*.yaml
-*.yml
 *.crt
 *.key
-
-# SSH keys
 *.pem
+
+# Clés SSH
 *.pub
 
-# System files
+# Fichiers système
 .DS_Store
 Thumbs.db
 
-# Temporary files
+# Fichiers temporaires
 *.tmp
 *.swp
 *.bak
 *.old
 
-# Python virtual environments (if applicable)
+# Environnements virtuels Python
 venv/
 __pycache__/
 
-# Node.js dependencies (if applicable)
+# Dépendances Node.js
 node_modules/
 
-# IDE specific files
+# Fichiers spécifiques aux IDEs
 .vscode/
 .idea/

@@ -1,24 +1,23 @@
 terraform {
-  required_version = ">= 1.5.0"
   required_providers {
     azurerm = {
       source  = "hashicorp/azurerm"
-      version = "~> 3.116"
+      version = "~>3.0"
     }
   }
 }
 
 provider "azurerm" {
   features {}
-  subscription_id = var.subscription_id
 }
 
-# Référencer le groupe de ressources existant
+# Indique à Terraform de LIRE les informations d'un groupe de ressources EXISTANT
 data "azurerm_resource_group" "rg" {
-  name     = "rg-group-03"
+  name = var.resource_group_name
 }
 
-# Créer un réseau virtuel
+# Crée un réseau virtuel (VNet) pour nos VMs
+# Notez que .location et .name pointent maintenant vers "data.azurerm_resource_group.rg"
 resource "azurerm_virtual_network" "vnet" {
   name                = "kubequest-vnet"
   address_space       = ["10.0.0.0/16"]
@@ -26,122 +25,131 @@ resource "azurerm_virtual_network" "vnet" {
   resource_group_name = data.azurerm_resource_group.rg.name
 }
 
-# Créer un sous-réseau
+# Crée un sous-réseau à l'intérieur du VNet
 resource "azurerm_subnet" "subnet" {
-  name                 = "default"
+  name                 = "kubequest-subnet"
   resource_group_name  = data.azurerm_resource_group.rg.name
   virtual_network_name = azurerm_virtual_network.vnet.name
   address_prefixes     = ["10.0.1.0/24"]
 }
 
-# Créer une interface réseau pour le maître
-resource "azurerm_network_interface" "master_nic" {
-  name                = "k8s-master-nic"
+# Crée un groupe de sécurité réseau (pare-feu)
+resource "azurerm_network_security_group" "nsg" {
+  name                = "kubequest-nsg"
+  location            = data.azurerm_resource_group.rg.location
+  resource_group_name = data.azurerm_resource_group.rg.name
+
+  security_rule {
+    name                       = "AllowSSH"
+    priority                   = 100
+    direction                  = "Inbound"
+    access                     = "Allow"
+    protocol                   = "Tcp"
+    source_port_range          = "*"
+    destination_port_range     = "22"
+    source_address_prefix      = "*" # Pour le projet. En production, limitez à votre IP.
+    destination_address_prefix = "*"
+  }
+
+  security_rule {
+    name                       = "AllowK3sApi"
+    priority                   = 200
+    direction                  = "Inbound"
+    access                     = "Allow"
+    protocol                   = "Tcp"
+    source_port_range          = "*"
+    destination_port_range     = "6443"
+    source_address_prefix      = "*" # Pour le projet. En production, limitez à votre IP.
+    destination_address_prefix = "*"
+  }
+
+  security_rule {
+    name                       = "AllowHTTP"
+    priority                   = 300
+    direction                  = "Inbound"
+    access                     = "Allow"
+    protocol                   = "Tcp"
+    source_port_range          = "*"
+    destination_port_range     = "80"
+    source_address_prefix      = "*" # Pour le projet. En production, limitez à votre IP.
+    destination_address_prefix = "*"
+  }
+
+  security_rule {
+    name                       = "AllowHTTPS"
+    priority                   = 400
+    direction                  = "Inbound"
+    access                     = "Allow"
+    protocol                   = "Tcp"
+    source_port_range          = "*"
+    destination_port_range     = "443"
+    source_address_prefix      = "*" # Pour le projet. En production, limitez à votre IP.
+    destination_address_prefix = "*"
+  }
+}
+
+# Boucle pour créer les IPs, les cartes réseau et les VMs
+locals {
+  nodes = {
+    "master" = {}
+    "worker" = {}
+  }
+}
+
+resource "azurerm_public_ip" "pip" {
+  for_each            = local.nodes
+  name                = "kubequest-${each.key}-pip"
+  location            = data.azurerm_resource_group.rg.location
+  resource_group_name = data.azurerm_resource_group.rg.name
+  allocation_method   = "Static" # IP Statique
+  sku                 = "Standard"
+}
+
+resource "azurerm_network_interface" "nic" {
+  for_each            = local.nodes
+  name                = "kubequest-${each.key}-nic"
   location            = data.azurerm_resource_group.rg.location
   resource_group_name = data.azurerm_resource_group.rg.name
 
   ip_configuration {
-    name                          = "internal"
+    name                          = "ipconfig1"
     subnet_id                     = azurerm_subnet.subnet.id
     private_ip_address_allocation = "Dynamic"
-    public_ip_address_id          = azurerm_public_ip.master_ip.id
+    public_ip_address_id          = azurerm_public_ip.pip[each.key].id
   }
 }
 
-# Créer une IP publique pour le maître
-resource "azurerm_public_ip" "master_ip" {
-  name                = "k8s-master-ip"
-  location            = data.azurerm_resource_group.rg.location
-  resource_group_name = data.azurerm_resource_group.rg.name
-  allocation_method   = "Dynamic"
+resource "azurerm_network_interface_security_group_association" "nsg_assoc" {
+  for_each                  = local.nodes
+  network_interface_id      = azurerm_network_interface.nic[each.key].id
+  network_security_group_id = azurerm_network_security_group.nsg.id
 }
 
-# Créer une interface réseau pour le worker
-resource "azurerm_network_interface" "worker_nic" {
-  name                = "k8s-worker-nic-1"
-  location            = data.azurerm_resource_group.rg.location
-  resource_group_name = data.azurerm_resource_group.rg.name
-
-  ip_configuration {
-    name                          = "internal"
-    subnet_id                     = azurerm_subnet.subnet.id
-    private_ip_address_allocation = "Dynamic"
-    public_ip_address_id          = azurerm_public_ip.worker_ip.id
-  }
-}
-
-# Créer une IP publique pour le worker
-resource "azurerm_public_ip" "worker_ip" {
-  name                = "k8s-worker-ip-1"
-  location            = data.azurerm_resource_group.rg.location
-  resource_group_name = data.azurerm_resource_group.rg.name
-  allocation_method   = "Dynamic"
-}
-
-# Créer la VM maître
-resource "azurerm_virtual_machine" "master" {
-  name                  = "k8s-master"
-  location              = data.azurerm_resource_group.rg.location
+resource "azurerm_linux_virtual_machine" "vm" {
+  for_each              = local.nodes
+  name                  = "kubequest-${each.key}"
   resource_group_name   = data.azurerm_resource_group.rg.name
-  network_interface_ids = [azurerm_network_interface.master_nic.id]
-  vm_size               = var.vm_size
-
-  storage_os_disk {
-    name              = "k8s-master-osdisk"
-    caching           = "ReadWrite"
-    create_option     = "FromImage"
-    managed_disk_type = "Standard_LRS"
-  }
-
-  storage_image_reference {
-  publisher = "Canonical"
-  offer     = "ubuntu-24_04-lts"
-  sku       = "server"
-  version   = "latest"
-}
-
-
-  os_profile {
-    computer_name  = "k8s-master"
-    admin_username = var.admin_username
-    admin_password = var.admin_password
-  }
-
-  os_profile_linux_config {
-    disable_password_authentication = false
-  }
-}
-
-# Créer la VM worker
-resource "azurerm_virtual_machine" "worker" {
-  name                  = "k8s-worker-1"
   location              = data.azurerm_resource_group.rg.location
-  resource_group_name   = data.azurerm_resource_group.rg.name
-  network_interface_ids = [azurerm_network_interface.worker_nic.id]
-  vm_size               = var.vm_size
+  size                  = "Standard_B2ls_v2"
+  admin_username        = var.admin_username
+  network_interface_ids = [azurerm_network_interface.nic[each.key].id]
 
-  storage_os_disk {
-    name              = "k8s-worker-1-osdisk"
-    caching           = "ReadWrite"
-    create_option     = "FromImage"
-    managed_disk_type = "Standard_LRS"
+  # Configuration de l'authentification par clé SSH
+  admin_ssh_key {
+    username   = var.admin_username
+    public_key = file(var.admin_public_key_path)
   }
 
-  storage_image_reference {
-  publisher = "Canonical"
-  offer     = "ubuntu-24_04-lts"
-  sku       = "server"
-  version   = "latest"
-}
-
-
-  os_profile {
-    computer_name  = "k8s-worker-1"
-    admin_username = var.admin_username
-    admin_password = var.admin_password
+  os_disk {
+    caching              = "ReadWrite"
+    storage_account_type = "Standard_LRS"
   }
 
-  os_profile_linux_config {
-    disable_password_authentication = false
+  # Image Ubuntu Server 22.04 LTS, légère et supportée
+  source_image_reference {
+    publisher = "Canonical"
+    offer     = "0001-com-ubuntu-server-jammy"
+    sku       = "22_04-lts"
+    version   = "latest"
   }
 }
